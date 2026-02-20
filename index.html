@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bakery Employee Payroll</title>
+<style>
+    /* Bakery CSS pattern background */
+    body {
+        font-family: 'Comic Sans MS', cursive, sans-serif;
+        background-color: #fff2e6;
+        color: #5c3a21;
+        margin: 20px;
+        background-image: 
+            radial-gradient(circle, #ffe6cc 1px, transparent 1px),
+            radial-gradient(circle, #ffd1a4 1px, transparent 1px);
+        background-size: 50px 50px;
+    }
+
+    h2 {
+        text-align: center;
+        font-size: 2em;
+        color: #d2691e;
+        text-shadow: 1px 1px #ffe6cc;
+        margin-bottom: 20px;
+    }
+
+    button {
+        background: linear-gradient(145deg, #ffd1a4, #ffb366);
+        border: none;
+        padding: 12px 18px;
+        margin: 5px;
+        border-radius: 20px;
+        font-weight: bold;
+        cursor: pointer;
+        box-shadow: 3px 3px 6px #d9a066, -3px -3px 6px #ffd9b3;
+        transition: transform 0.1s;
+    }
+    button:hover { transform: scale(1.05); }
+
+    table { 
+        border-collapse: collapse; 
+        width: 100%; 
+        margin-top: 20px;
+        background-color: #fff7f0;
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+    th, td { 
+        border: 1px solid #ffd9b3; 
+        padding: 10px; 
+        text-align: center; 
+    }
+    th { background-color: #ffcc99; font-size: 1em; }
+
+    input[type="number"], select {
+        width: 100px;
+        border-radius: 12px;
+        border: 2px solid #d9a066;
+        padding: 6px;
+        text-align: center;
+        background: linear-gradient(145deg, #fff1e6, #ffe6cc);
+        box-shadow: inset 2px 2px 5px #ffd9b3, inset -2px -2px 5px #fff7f0;
+        font-weight: bold;
+    }
+
+    tfoot td { font-weight: bold; background-color: #ffe6cc; }
+    .highest-paid { background-color: #fff99c !important; }
+    .Baker { background-color: #fff0e6; } 
+    .Cashier { background-color: #fff7ff; } 
+</style>
+</head>
+<body>
+
+<h2>Bakery Employee Payroll</h2>
+
+<button onclick="addEmployeeRow()">🍪 Add Employee Row</button>
+<button onclick="downloadCSV()">🍰 Download Payroll</button>
+<button onclick="addEmployeeManually()">🥐 Add New Employee</button>
+
+<table id="payrollTable">
+    <thead>
+        <tr>
+            <th>Employee Name</th>
+            <th>Designation</th>
+            <th>Days Worked (1st half)</th>
+            <th>Days Worked (2nd half)</th>
+            <th>Daily Rate (₱)</th>
+            <th>Incentives (₱)</th>
+            <th>Total Pay (₱)</th>
+        </tr>
+    </thead>
+    <tbody>
+        <!-- Employee rows added here -->
+    </tbody>
+    <tfoot>
+        <tr>
+            <td colspan="6">Grand Total</td>
+            <td id="grandTotal">₱0.00</td>
+        </tr>
+    </tfoot>
+</table>
+
+<script>
+// Predefined employee list with bakery emoji
+let employees = ["🍞 Roby", "🍰 Andrea", "🥐 Anthony", "🍪 Bryan"];
+
+function addEmployeeRow() {
+    const tbody = document.querySelector("#payrollTable tbody");
+    const row = document.createElement("tr");
+
+    const nameCell = document.createElement("td");
+    const nameSelect = document.createElement("select");
+    employees.forEach(emp => {
+        const opt = document.createElement("option");
+        opt.value = emp;
+        opt.textContent = emp;
+        nameSelect.appendChild(opt);
+    });
+    nameCell.appendChild(nameSelect);
+    row.appendChild(nameCell);
+
+    const designationCell = document.createElement("td");
+    const designationSelect = document.createElement("select");
+    ["Baker", "Cashier"].forEach(opt => {
+        const optionEl = document.createElement("option");
+        optionEl.value = opt;
+        optionEl.textContent = opt;
+        designationSelect.appendChild(optionEl);
+    });
+    designationCell.appendChild(designationSelect);
+    row.appendChild(designationCell);
+
+    const createNumberInput = () => {
+        const input = document.createElement("input");
+        input.type = "number"; input.min = 0; input.value = 0;
+        return input;
+    }
+
+    const days1Input = createNumberInput();
+    const days2Input = createNumberInput();
+    const rateInput = createNumberInput();
+    const incentivesInput = createNumberInput();
+
+    row.appendChild(document.createElement("td")).appendChild(days1Input);
+    row.appendChild(document.createElement("td")).appendChild(days2Input);
+    row.appendChild(document.createElement("td")).appendChild(rateInput);
+    row.appendChild(document.createElement("td")).appendChild(incentivesInput);
+
+    const totalCell = document.createElement("td");
+    totalCell.textContent = "₱0.00";
+    row.appendChild(totalCell);
+
+    function updateTotal() {
+        const total = (Number(days1Input.value) + Number(days2Input.value)) * Number(rateInput.value) + Number(incentivesInput.value);
+        totalCell.textContent = `₱${total.toFixed(2)}`;
+        updateGrandTotal();
+        highlightHighestPaid();
+        updateRowColor();
+    }
+
+    function updateRowColor() {
+        row.classList.remove("Baker", "Cashier");
+        row.classList.add(designationSelect.value);
+    }
+
+    [days1Input, days2Input, rateInput, incentivesInput, designationSelect].forEach(el => {
+        el.addEventListener("input", updateTotal);
+        el.addEventListener("change", updateTotal);
+    });
+
+    tbody.appendChild(row);
+    updateTotal();
+}
+
+function addEmployeeManually() {
+    const newEmp = prompt("Enter new employee name:");
+    if (newEmp && !employees.some(e => e.includes(newEmp))) {
+        const emoji = "🥯"; // default bakery icon
+        employees.push(`${emoji} ${newEmp}`);
+        alert(`${newEmp} added to employee list with bakery icon!`);
+    }
+}
+
+function updateGrandTotal() {
+    const totalCells = document.querySelectorAll("#payrollTable tbody tr td:last-child");
+    let grandTotal = 0;
+    totalCells.forEach(cell => {
+        grandTotal += parseFloat(cell.textContent.replace("₱", "")) || 0;
+    });
+    document.getElementById("grandTotal").textContent = `₱${grandTotal.toFixed(2)}`;
+}
+
+function highlightHighestPaid() {
+    const rows = document.querySelectorAll("#payrollTable tbody tr");
+    let max = 0;
+    let highestRow = null;
+    rows.forEach(row => {
+        row.classList.remove("highest-paid");
+        const total = parseFloat(row.querySelector("td:last-child").textContent.replace("₱", "")) || 0;
+        if (total > max) { max = total; highestRow = row; }
+    });
+    if (highestRow) highestRow.classList.add("highest-paid");
+}
+
+function downloadCSV() {
+    let csv = [];
+    const rows = document.querySelectorAll("#payrollTable tr");
+    rows.forEach(row => {
+        const cols = row.querySelectorAll("td, th");
+        csv.push(Array.from(cols).map(col => col.textContent.replace("₱", "").trim()).join(","));
+    });
+    const blob = new Blob([csv.join("\n")], { type: "text/csv" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "Payroll.csv";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+}
+</script>
+
+</body>
+</html>
