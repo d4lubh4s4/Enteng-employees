@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Enteng Cheesedesal Payroll System</title>
+
+<!-- jsPDF CDN -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+<style>
+body{
+font-family:Arial;
+background:#f4f6f9;
+margin:0;
+padding:10px;
+}
+
+.login-box{
+max-width:350px;
+margin:120px auto;
+background:white;
+padding:20px;
+border-radius:10px;
+box-shadow:0 4px 12px rgba(0,0,0,0.2);
+text-align:center;
+}
+
+.container{
+max-width:1100px;
+margin:auto;
+display:none;
+}
+
+.card{
+background:white;
+padding:15px;
+border-radius:10px;
+box-shadow:0 3px 10px rgba(0,0,0,0.1);
+margin-bottom:15px;
+}
+
+button{
+background:#d62828;
+color:white;
+border:none;
+padding:6px 12px;
+border-radius:6px;
+cursor:pointer;
+margin:3px 0;
+}
+
+table{
+width:100%;
+border-collapse:collapse;
+font-size:13px;
+}
+
+th,td{
+border:1px solid #ddd;
+padding:6px;
+text-align:center;
+}
+
+th{background:#fcbf49;}
+
+.table-wrap{overflow-x:auto;}
+
+@media(max-width:768px){
+table{font-size:11px;}
+}
+</style>
+</head>
+
+<body>
+
+<!-- LOGIN PAGE -->
+<div class="login-box" id="loginBox">
+<h2>Admin Login</h2>
+<input id="username" placeholder="Username"><br><br>
+<input id="password" type="password" placeholder="Password"><br><br>
+<button onclick="login()">Login</button>
+</div>
+
+<!-- MAIN SYSTEM -->
+<div class="container" id="system">
+
+<div class="card">
+<h2>🥖 Enteng Cheesedesal Payroll</h2>
+<button onclick="logout()">Logout</button>
+<button onclick="addRow()">Add Employee</button>
+</div>
+
+<div class="card table-wrap">
+<table id="payroll">
+<thead>
+<tr>
+<th>Name</th>
+<th>Role</th>
+<th>Days</th>
+<th>Rate</th>
+<th>OT</th>
+<th>Gross</th>
+<th>SSS</th>
+<th>Pagibig</th>
+<th>PhilHealth</th>
+<th>Net</th>
+<th>PDF</th>
+</tr>
+</thead>
+<tbody></tbody>
+</table>
+</div>
+
+</div>
+
+<script>
+
+/* ================= LOGIN ================= */
+
+const ADMIN_USER="admin";
+const ADMIN_PASS="Enteng2026!";
+
+function login(){
+if(username.value===ADMIN_USER && password.value===ADMIN_PASS){
+loginBox.style.display="none";
+system.style.display="block";
+}
+else alert("Invalid Login");
+}
+
+function logout(){
+location.reload();
+}
+
+/* ================= PAYROLL ================= */
+
+function addRow(){
+let tbody=document.querySelector("#payroll tbody");
+let row=document.createElement("tr");
+
+function inputCell(type){
+let td=document.createElement("td");
+let input=document.createElement("input");
+input.type=type;
+input.style.width="70px";
+td.appendChild(input);
+return {td,input};
+}
+
+let name=inputCell("text");
+let role=inputCell("text");
+let days=inputCell("number");
+let rate=inputCell("number");
+let ot=inputCell("number");
+
+row.appendChild(name.td);
+row.appendChild(role.td);
+row.appendChild(days.td);
+row.appendChild(rate.td);
+row.appendChild(ot.td);
+
+let grossTd=document.createElement("td");
+let sssTd=document.createElement("td");
+let pagTd=document.createElement("td");
+let philTd=document.createElement("td");
+let netTd=document.createElement("td");
+
+row.appendChild(grossTd);
+row.appendChild(sssTd);
+row.appendChild(pagTd);
+row.appendChild(philTd);
+row.appendChild(netTd);
+
+let pdfBtn=document.createElement("button");
+pdfBtn.textContent="Download";
+pdfBtn.onclick=()=>generatePDF(row);
+
+let pdfTd=document.createElement("td");
+pdfTd.appendChild(pdfBtn);
+row.appendChild(pdfTd);
+
+function compute(){
+let d=+days.input.value||0;
+let r=+rate.input.value||0;
+let overtime=+ot.input.value||0;
+
+let gross=(d*r)+overtime;
+
+let sss=gross*0.045;
+let pag=Math.min(gross*0.02,100);
+let phil=(gross*0.05)/2;
+
+let net=gross-(sss+pag+phil);
+
+grossTd.textContent=gross.toFixed(2);
+sssTd.textContent=sss.toFixed(2);
+pagTd.textContent=pag.toFixed(2);
+philTd.textContent=phil.toFixed(2);
+netTd.textContent=net.toFixed(2);
+}
+
+[days.input,rate.input,ot.input].forEach(i=>i.oninput=compute);
+
+tbody.appendChild(row);
+}
+
+/* ================= PDF GENERATION ================= */
+
+async function generatePDF(row){
+
+const { jsPDF } = window.jspdf;
+let doc=new jsPDF();
+
+let name=row.children[0].querySelector("input").value;
+let role=row.children[1].querySelector("input").value;
+let rate=row.children[3].querySelector("input").value;
+let ot=row.children[4].querySelector("input").value;
+let gross=row.children[5].textContent;
+let sss=row.children[6].textContent;
+let pag=row.children[7].textContent;
+let phil=row.children[8].textContent;
+let net=row.children[9].textContent;
+
+let today=new Date().toLocaleDateString();
+let month=new Date().toLocaleString('default',{month:'long',year:'numeric'});
+
+let totalDed=(+sss + +pag + +phil).toFixed(2);
+
+/* HEADER */
+doc.setFontSize(16);
+doc.text("Enteng Cheesedesal",20,20);
+doc.setFontSize(12);
+doc.text("Solano Branch",20,27);
+
+doc.line(20,32,190,32);
+
+/* DETAILS */
+doc.text(`Month: ${month}`,20,40);
+doc.text(`Employee Name: ${name}`,20,47);
+doc.text(`Role: ${role}`,20,54);
+doc.text(`Rate: ₱${rate}`,20,61);
+doc.text(`Pay Date: ${today}`,20,68);
+
+/* EARNINGS */
+doc.setFontSize(14);
+doc.text("Earnings",20,80);
+doc.setFontSize(11);
+doc.text("Basic Salary",20,88);
+doc.text(`₱${gross}`,160,88);
+doc.text("Overtime / Incentives",20,95);
+doc.text(`₱${ot}`,160,95);
+doc.line(20,100,190,100);
+doc.text("Total Earnings",20,108);
+doc.text(`₱${gross}`,160,108);
+
+/* DEDUCTIONS */
+doc.setFontSize(14);
+doc.text("Deductions",20,120);
+doc.setFontSize(11);
+doc.text("SSS",20,128);
+doc.text(`₱${sss}`,160,128);
+doc.text("Pagibig",20,135);
+doc.text(`₱${pag}`,160,135);
+doc.text("PhilHealth",20,142);
+doc.text(`₱${phil}`,160,142);
+doc.line(20,147,190,147);
+doc.text("Total Deductions",20,155);
+doc.text(`₱${totalDed}`,160,155);
+
+/* NET */
+doc.setFontSize(14);
+doc.text(`Net Pay: ₱${net}`,20,170);
+
+/* SAVE */
+doc.save(`${name}_Payslip.pdf`);
+}
+
+</script>
+
+</body>
+</html>
