@@ -157,8 +157,9 @@ let rows=table.querySelectorAll("tr");
 let grandTotal=0;
 
 rows.forEach(row=>{
-let value=row.cells[8].innerText.replace("₱","");
-grandTotal+=parseFloat(value)||0;
+let text=row.cells[8].innerText;
+let value=text.replace("₱","").replace(/,/g,"").trim();
+grandTotal+=Number(value);
 });
 
 document.getElementById("grandTotalDisplay").innerText=
