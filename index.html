@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Enteng Cheesedesal Payroll</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+<style>
+body{font-family:Arial;margin:0;background:#f4f4f4;}
+.container{padding:15px;}
+input,select,button{padding:8px;margin:5px 0;width:100%;}
+button{background:#4CAF50;color:white;border:none;cursor:pointer;}
+button:hover{opacity:0.9;}
+table{width:100%;border-collapse:collapse;background:white;margin-top:10px;}
+th,td{border:1px solid #ddd;padding:8px;text-align:center;font-size:14px;}
+th{background:#4CAF50;color:white;}
+.login{max-width:400px;margin:100px auto;background:white;padding:20px;border-radius:5px;}
+.modal{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);}
+.modal-content{background:white;margin:5% auto;padding:20px;width:90%;max-width:500px;}
+.close{float:right;cursor:pointer;font-size:18px;}
+@media(max-width:600px){
+th,td{font-size:12px;padding:5px;}
+}
+</style>
+</head>
+
+<body>
+
+<div id="loginPage" class="login">
+<h2>Payroll Login</h2>
+<input type="text" id="username" placeholder="Username">
+<input type="password" id="password" placeholder="Password">
+<button onclick="login()">Login</button>
+</div>
+
+<div id="mainApp" style="display:none;">
+<div class="container">
+
+<h2>Enteng Cheesedesal Payroll System</h2>
+
+<select id="employeeName">
+<option>Roby</option>
+<option>Andrea</option>
+<option>Anthony</option>
+<option>Bryan</option>
+<option>Bojo</option>
+</select>
+
+<select id="role">
+<option>Cashier</option>
+<option>Baker</option>
+</select>
+
+<input type="number" id="rate" placeholder="Daily Rate">
+<input type="number" id="days" placeholder="Days Worked">
+<input type="number" id="ot" placeholder="Overtime / Incentives">
+
+<input type="text" id="bankInfo" placeholder="Bank Name / Account Number">
+<input type="text" id="payPeriod" placeholder="Pay Period">
+
+<div id="deductionsArea">
+<h4>Deductions</h4>
+<div class="deductionRow">
+<input type="text" placeholder="Deduction Name" class="deductionName">
+<input type="number" placeholder="Amount" class="deductionAmount">
+</div>
+</div>
+
+<button onclick="addDeduction()">Add Deduction</button>
+
+<label><input type="checkbox" id="sssCheck" checked> Apply SSS</label>
+<label><input type="checkbox" id="pagibigCheck" checked> Apply Pagibig</label>
+<label><input type="checkbox" id="philhealthCheck" checked> Apply PhilHealth</label>
+
+<button onclick="addPayroll()">Add Payroll</button>
+
+<table id="payrollTable">
+<thead>
+<tr>
+<th>Name</th>
+<th>Role</th>
+<th>Rate</th>
+<th>Days</th>
+<th>OT</th>
+<th>Deduction</th>
+<th>SSS</th>
+<th>Pagibig</th>
+<th>PhilHealth</th>
+<th>Total</th>
+<th>Action</th>
+</tr>
+</thead>
+<tbody></tbody>
+</table>
+
+<h3 id="grandTotalDisplay">Grand Total: ₱0.00</h3>
+
+</div>
+</div>
+
+<div id="payslipModal" class="modal">
+<div class="modal-content">
+<span class="close" onclick="closeModal()">&times;</span>
+<div id="payslipContent"></div>
+<button onclick="downloadPDF()">Generate PDF</button>
+</div>
+</div>
+
+<script>
+
+let payslipHTML="";
+
+function login(){
+let username=document.getElementById("username").value;
+let password=document.getElementById("password").value;
+
+if(username==="teresita" && password==="weloveyou4ever"){
+document.getElementById("loginPage").style.display="none";
+document.getElementById("mainApp").style.display="block";
+}else{
+alert("Invalid login!");
+}
+}
+
+function addDeduction(){
+let area=document.getElementById("deductionsArea");
+let div=document.createElement("div");
+div.className="deductionRow";
+div.innerHTML=`
+<input type="text" placeholder="Deduction Name" class="deductionName">
+<input type="number" placeholder="Amount" class="deductionAmount">
+`;
+area.appendChild(div);
+}
+
+function addPayroll(){
+
+let name=document.getElementById("employeeName").value;
+let role=document.getElementById("role").value;
+let rate=parseFloat(document.getElementById("rate").value);
+let days=parseFloat(document.getElementById("days").value);
+let ot=parseFloat(document.getElementById("ot").value);
+let bankInfo=document.getElementById("bankInfo").value;
+let payPeriod=document.getElementById("payPeriod").value;
+
+let basic=rate*days;
+
+let deductionNames=document.querySelectorAll(".deductionName");
+let deductionAmounts=document.querySelectorAll(".deductionAmount");
+
+let deduction=0;
+let deductionList=[];
+
+for(let i=0;i<deductionAmounts.length;i++){
+let dname=deductionNames[i].value;
+let damount=parseFloat(deductionAmounts[i].value)||0;
+
+if(dname && damount){
+deduction+=damount;
+deductionList.push({name:dname,amount:damount});
+}
+}
+
+let sssCheck=document.getElementById("sssCheck").checked;
+let pagibigCheck=document.getElementById("pagibigCheck").checked;
+let philhealthCheck=document.getElementById("philhealthCheck").checked;
+
+let sss=sssCheck ? basic*0.045 : 0;
+let pagibig=pagibigCheck ? 100 : 0;
+let philhealth=philhealthCheck ? basic*0.02 : 0;
+
+let total=basic+ot-sss-pagibig-philhealth-deduction;
+
+let table=document.querySelector("#payrollTable tbody");
+let row=table.insertRow();
+
+row.innerHTML=`
+<td>${name}</td>
+<td>${role}</td>
+<td>₱${rate.toFixed(2)}</td>
+<td>${days}</td>
+<td>₱${ot.toFixed(2)}</td>
+<td>₱${deduction.toFixed(2)}</td>
+<td>₱${sss.toFixed(2)}</td>
+<td>₱${pagibig.toFixed(2)}</td>
+<td>₱${philhealth.toFixed(2)}</td>
+<td>₱${total.toFixed(2)}</td>
+<td>
+<button onclick='viewPayslip("${name}","${role}",${rate},${days},${ot},${JSON.stringify(deductionList)},${sss},${pagibig},${philhealth},${total},"${bankInfo}","${payPeriod}",${sssCheck},${pagibigCheck},${philhealthCheck})'>View</button>
+<button onclick="deleteRow(this)">Delete</button>
+</td>
+`;
+
+updateGrandTotal();
+}
+
+function deleteRow(btn){
+let row=btn.parentNode.parentNode;
+row.remove();
+updateGrandTotal();
+}
+
+function updateGrandTotal(){
+let table=document.querySelector("#payrollTable tbody");
+let rows=table.querySelectorAll("tr");
+let grandTotal=0;
+
+rows.forEach(row=>{
+let text=row.cells[9].innerText;
+let value=text.replace("₱","").replace(/,/g,"").trim();
+grandTotal+=Number(value);
+});
+
+document.getElementById("grandTotalDisplay").innerText=
+"Grand Total: ₱"+grandTotal.toFixed(2);
+}
+
+function viewPayslip(name,role,rate,days,ot,deductionList,sss,pagibig,philhealth,total,bankInfo,payPeriod,sssCheck,pagibigCheck,philhealthCheck){
+
+let basic=rate*days;
+let today=new Date().toLocaleDateString();
+
+let deductionHTML="";
+let deductionTotal=0;
+
+deductionList.forEach(d=>{
+deductionHTML+=`<tr><td>${d.name}</td><td>₱${d.amount.toFixed(2)}</td></tr>`;
+deductionTotal+=d.amount;
+});
+
+let govHTML="";
+if(sssCheck){ govHTML+=`<tr><td>SSS</td><td>₱${sss.toFixed(2)}</td></tr>`; }
+if(pagibigCheck){ govHTML+=`<tr><td>Pagibig</td><td>₱${pagibig.toFixed(2)}</td></tr>`; }
+if(philhealthCheck){ govHTML+=`<tr><td>PhilHealth</td><td>₱${philhealth.toFixed(2)}</td></tr>`; }
+
+payslipHTML=`
+<h3 style="text-align:center;">Enteng Cheesedesal (Solano Branch)</h3>
+<hr>
+<p><b>Employee:</b> ${name}</p>
+<p><b>Role:</b> ${role}</p>
+<p><b>Rate:</b> ₱${rate.toFixed(2)}</p>
+<p><b>Pay Date:</b> ${today}</p>
+<p><b>Pay Period:</b> ${payPeriod}</p>
+<p><b>Bank:</b> ${bankInfo}</p>
+
+<h4>Earnings</h4>
+<table border="1" width="100%" style="border-collapse:collapse;">
+<tr><td>Basic Salary</td><td>₱${basic.toFixed(2)}</td></tr>
+<tr><td>Overtime/Incentives</td><td>₱${ot.toFixed(2)}</td></tr>
+<tr><td><b>Total Earnings</b></td><td><b>₱${(basic+ot).toFixed(2)}</b></td></tr>
+</table>
+
+<h4>Deductions</h4>
+<table border="1" width="100%" style="border-collapse:collapse;">
+${deductionHTML}
+${govHTML}
+<tr><td><b>Total Deductions</b></td><td><b>₱${(deductionTotal+sss+pagibig+philhealth).toFixed(2)}</b></td></tr>
+</table>
+
+<h3>Net Pay: ₱${total.toFixed(2)}</h3>
+`;
+
+document.getElementById("payslipContent").innerHTML=payslipHTML;
+document.getElementById("payslipModal").style.display="block";
+}
+
+function closeModal(){
+document.getElementById("payslipModal").style.display="none";
+}
+
+async function downloadPDF(){
+
+const { jsPDF } = window.jspdf;
+const doc = new jsPDF();
+
+let tempDiv=document.createElement("div");
+tempDiv.innerHTML=payslipHTML;
+
+let text=tempDiv.innerText.replace(/\+\-/g,"₱");
+
+doc.setFont("helvetica","normal");
+doc.setFontSize(12);
+doc.text(text,10,20);
+
+doc.save("Payslip.pdf");
+}
+
+</script>
+
+</body>
+</html>
